@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>종이 무게 계산기</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Noto+Sans+KR:wght@300;400;500;700&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --ink: #1a1a2e;
+    --ink-soft: #3a3a52;
+    --ink-muted: #8888aa;
+    --paper: #f8f8f5;
+    --paper-dark: #ededea;
+    --red: #c0392b;
+    --red-light: #fdf0ee;
+    --border: #d4d4cc;
+    --mono: 'IBM Plex Mono', monospace;
+    --sans: 'Noto Sans KR', sans-serif;
+  }
+
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--sans);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  header {
+    width: 100%;
+    background: var(--ink);
+    color: white;
+    padding: 20px 32px;
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+  }
+
+  header h1 {
+    font-family: var(--mono);
+    font-size: 18px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: white;
+  }
+
+  header span {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--ink-muted);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .main {
+    width: 100%;
+    max-width: 860px;
+    padding: 32px 20px 60px;
+  }
+
+  /* ─── GRID ─── */
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+
+  @media (max-width: 600px) {
+    .grid { grid-template-columns: 1fr; }
+  }
+
+  /* ─── CARD ─── */
+  .card {
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 20px 22px;
+  }
+
+  .card-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-muted);
+    margin-bottom: 12px;
+  }
+
+  /* ─── SELECT / INPUT ─── */
+  select, input[type="number"] {
+    width: 100%;
+    background: var(--paper);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 10px 12px;
+    font-family: var(--sans);
+    font-size: 14px;
+    color: var(--ink);
+    appearance: none;
+    -webkit-appearance: none;
+    cursor: pointer;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+
+  select:focus, input[type="number"]:focus {
+    border-color: var(--ink);
+  }
+
+  .select-wrap {
+    position: relative;
+  }
+
+  .select-wrap::after {
+    content: '▾';
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--ink-muted);
+    pointer-events: none;
+    font-size: 12px;
+  }
+
+  /* ─── WEIGHT CHIPS ─── */
+  .chip-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 4px;
+  }
+
+  .chip {
+    font-family: var(--mono);
+    font-size: 13px;
+    padding: 7px 14px;
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    background: var(--paper);
+    color: var(--ink);
+    cursor: pointer;
+    transition: all 0.12s;
+    user-select: none;
+  }
+
+  .chip:hover {
+    border-color: var(--ink-soft);
+    background: var(--paper-dark);
+  }
+
+  .chip.active {
+    background: var(--ink);
+    color: white;
+    border-color: var(--ink);
+  }
+
+  /* ─── SIZE PILLS ─── */
+  .size-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .size-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 12px;
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    background: var(--paper);
+    cursor: pointer;
+    transition: all 0.12s;
+  }
+
+  .size-item:hover {
+    border-color: var(--ink-soft);
+    background: var(--paper-dark);
+  }
+
+  .size-item.active {
+    background: var(--ink);
+    border-color: var(--ink);
+  }
+
+  .size-item.active .size-name,
+  .size-item.active .size-mm {
+    color: white;
+  }
+
+  .size-name {
+    font-family: var(--sans);
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--ink);
+    min-width: 72px;
+  }
+
+  .size-mm {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--ink-muted);
+  }
+
+  /* ─── QTY INPUT ─── */
+  .qty-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .qty-row input {
+    flex: 1;
+    text-align: right;
+    font-family: var(--mono);
+    font-size: 16px;
+  }
+
+  .qty-unit {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--ink-muted);
+    white-space: nowrap;
+  }
+
+  /* ─── RESULT ─── */
+  .result-card {
+    background: var(--ink);
+    border-radius: 4px;
+    padding: 28px 28px 24px;
+    margin-top: 16px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .result-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: var(--red);
+  }
+
+  .result-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-muted);
+    margin-bottom: 20px;
+  }
+
+  .result-main {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+  }
+
+  @media (max-width: 500px) {
+    .result-main { grid-template-columns: 1fr 1fr; }
+    .result-main .r-item:last-child { grid-column: span 2; }
+  }
+
+  .r-item {}
+
+  .r-val {
+    font-family: var(--mono);
+    font-size: 28px;
+    font-weight: 600;
+    color: white;
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+
+  .r-val.big {
+    font-size: 36px;
+    color: #f0f0e8;
+  }
+
+  .r-unit {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--ink-muted);
+    letter-spacing: 0.06em;
+  }
+
+  .r-desc {
+    font-family: var(--sans);
+    font-size: 11px;
+    color: #6666888;
+    color: rgba(255,255,255,0.35);
+    margin-top: 2px;
+  }
+
+  /* ─── SUMMARY LINE ─── */
+  .summary {
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(255,255,255,0.1);
+    font-family: var(--mono);
+    font-size: 11px;
+    color: rgba(255,255,255,0.35);
+    letter-spacing: 0.03em;
+    line-height: 1.8;
+  }
+
+  /* ─── FORMULA ─── */
+  .formula-note {
+    margin-top: 10px;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--ink-muted);
+    letter-spacing: 0.04em;
+    text-align: center;
+  }
+
+  /* ─── DIVIDER ─── */
+  .section-div {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 4px 0 12px;
+  }
+
+  .section-div span {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    color: var(--ink-muted);
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  .section-div::before, .section-div::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* ─── EMPTY STATE ─── */
+  .empty-state {
+    background: var(--paper-dark);
+    border: 1px dashed var(--border);
+    border-radius: 4px;
+    padding: 36px;
+    text-align: center;
+    margin-top: 16px;
+  }
+
+  .empty-state p {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--ink-muted);
+    letter-spacing: 0.04em;
+  }
+
+  /* ─── CUSTOM SIZE ─── */
+  .custom-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-top: 8px;
+  }
+
+  .custom-row input {
+    text-align: center;
+    font-family: var(--mono);
+  }
+
+  .custom-row span {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--ink-muted);
+  }
+
+  /* ─── CALC BUTTON ─── */
+  #calcBtn {
+    display: block;
+    width: 100%;
+    padding: 16px;
+    margin-bottom: 16px;
+    background: var(--red);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-family: var(--sans);
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.1s;
+  }
+
+  #calcBtn:hover {
+    background: #a93226;
+  }
+
+  #calcBtn:active {
+    transform: scale(0.98);
+  }
+
+  /* tabs */
+  .tab-row {
+    display: flex;
+    gap: 0;
+    margin-bottom: 12px;
+  }
+
+  .tab {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 7px 16px;
+    border: 1px solid var(--border);
+    background: var(--paper);
+    color: var(--ink-muted);
+    cursor: pointer;
+    transition: all 0.12s;
+    margin-right: -1px;
+  }
+
+  .tab:first-child { border-radius: 3px 0 0 3px; }
+  .tab:last-child { border-radius: 0 3px 3px 0; }
+
+  .tab.active {
+    background: var(--ink);
+    color: white;
+    border-color: var(--ink);
+    z-index: 1;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>인쇄소 종이 무게 계산기</h1>
+    <div style="margin-top:6px; font-family:'IBM Plex Mono',monospace; font-size:12px; color:#8888aa; letter-spacing:0.06em;">제작 : 보라인쇄  김선철</div>
+  </div>
+</header>
+
+<div class="main">
+
+  <div class="grid">
+
+    <!-- 종이 종류 -->
+    <div class="card">
+      <div class="card-label">01 / 종이 종류</div>
+      <div class="select-wrap">
+        <select id="paperType" onchange="onTypeChange()">
+          <option value="">— 선택하세요 —</option>
+          <option value="art">아트지</option>
+          <option value="snow">스노우지</option>
+          <option value="mojo">모조지</option>
+          <option value="rendez">랑데뷰</option>
+          <option value="manila">SC 마닐라지</option>
+          <option value="ivory">아이보리지</option>
+        </select>
+      </div>
+
+      <div id="weightSection" style="margin-top:16px; display:none;">
+        <div class="card-label" style="margin-bottom:10px;">평량 (g/m²)</div>
+        <div class="chip-group" id="chipGroup"></div>
+      </div>
+    </div>
+
+    <!-- 종이 수량 -->
+    <div class="card">
+      <div class="card-label">02 / 수량</div>
+      <div class="qty-row">
+        <input type="number" id="qty" min="1" value="1000" oninput="calculate()" />
+        <span class="qty-unit">장</span>
+      </div>
+      <div style="margin-top:10px;">
+        <div class="card-label" style="margin-bottom:8px;">빠른 선택</div>
+        <div class="chip-group">
+          <span class="chip" onclick="setQty(100)">100</span>
+          <span class="chip" onclick="setQty(500)">500</span>
+          <span class="chip" onclick="setQty(1000)">1,000</span>
+          <span class="chip" onclick="setQty(3000)">3,000</span>
+          <span class="chip" onclick="setQty(5000)">5,000</span>
+          <span class="chip" onclick="setQty(10000)">10,000</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 종이 사이즈 -->
+  <div class="card" style="margin-bottom:16px;">
+    <div class="card-label">03 / 종이 사이즈</div>
+
+    <div class="tab-row">
+      <div class="tab active" id="tab-preset" onclick="switchTab('preset')">규격 사이즈</div>
+      <div class="tab" id="tab-custom" onclick="switchTab('custom')">직접 입력</div>
+    </div>
+
+    <div id="preset-panel">
+      <div class="size-group" id="sizeGroup">
+        <div class="size-item active" data-w="788" data-h="1091" onclick="selectSize(this)">
+          <span class="size-name">46전지</span>
+          <span class="size-mm">788 × 1091 mm</span>
+        </div>
+        <div class="size-item" data-w="636" data-h="939" onclick="selectSize(this)">
+          <span class="size-name">국전</span>
+          <span class="size-mm">636 × 939 mm</span>
+        </div>
+        <div class="size-item" data-w="880" data-h="625" onclick="selectSize(this)">
+          <span class="size-name">소국전</span>
+          <span class="size-mm">880 × 625 mm</span>
+        </div>
+        <div class="size-item" data-w="788" data-h="545" onclick="selectSize(this)">
+          <span class="size-name">2절</span>
+          <span class="size-mm">788 × 545 mm</span>
+        </div>
+        <div class="size-item" data-w="469" data-h="318" onclick="selectSize(this)">
+          <span class="size-name">국반절</span>
+          <span class="size-mm">469 × 318 mm</span>
+        </div>
+      </div>
+    </div>
+
+    <div id="custom-panel" style="display:none;">
+      <div class="custom-row">
+        <input type="number" id="customW" placeholder="가로 (mm)" min="1" oninput="calculate()" style="font-size:14px;" />
+        <span>×</span>
+        <input type="number" id="customH" placeholder="세로 (mm)" min="1" oninput="calculate()" style="font-size:14px;" />
+        <span>mm</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 계산 버튼 -->
+  <button id="calcBtn" onclick="calculate()">무게 계산 하기</button>
+
+  <!-- 결과 -->
+  <div id="resultArea">
+    <div class="empty-state">
+      <p>종이 종류와 평량을 선택하면<br>무게가 계산됩니다</p>
+    </div>
+  </div>
+
+  <div class="formula-note">
+    무게(kg) = 가로(m) × 세로(m) × 평량(g/m²) × 수량 ÷ 1,000
+  </div>
+
+</div>
+
+<script>
+const PAPERS = {
+  art:    { name: '아트지',     gsm: [80, 90, 100, 120, 150, 180, 200, 250, 300] },
+  snow:   { name: '스노우지',   gsm: [100, 120, 150, 180, 200, 250, 300] },
+  mojo:   { name: '모조지',     gsm: [70, 80, 100, 120, 150, 220] },
+  rendez: { name: '랑데뷰',     gsm: [90, 130, 160, 190, 230, 280] },
+  manila: { name: 'SC 마닐라지', gsm: [200, 250, 300, 350, 400] },
+  ivory:  { name: '아이보리지', gsm: [180, 200, 230, 250, 300, 350, 400] },
+};
+
+let state = {
+  type: null,
+  gsm: null,
+  w: 788,   // mm
+  h: 1091,  // mm
+  qty: 1000,
+  tab: 'preset',
+};
+
+function onTypeChange() {
+  const val = document.getElementById('paperType').value;
+  state.type = val || null;
+  state.gsm = null;
+
+  const section = document.getElementById('weightSection');
+  const group = document.getElementById('chipGroup');
+  group.innerHTML = '';
+
+  if (!val) {
+    section.style.display = 'none';
+    renderResult();
+    return;
+  }
+
+  section.style.display = 'block';
+  PAPERS[val].gsm.forEach(g => {
+    const chip = document.createElement('span');
+    chip.className = 'chip';
+    chip.textContent = g;
+    chip.onclick = () => selectGsm(chip, g);
+    group.appendChild(chip);
+  });
+  renderResult();
+}
+
+function selectGsm(el, g) {
+  document.querySelectorAll('#chipGroup .chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  state.gsm = g;
+  calculate();
+}
+
+function selectSize(el) {
+  document.querySelectorAll('.size-item').forEach(s => s.classList.remove('active'));
+  el.classList.add('active');
+  state.w = parseInt(el.dataset.w);
+  state.h = parseInt(el.dataset.h);
+  calculate();
+}
+
+function setQty(n) {
+  document.getElementById('qty').value = n;
+  state.qty = n;
+  // update chip highlight
+  document.querySelectorAll('.card:nth-child(2) .chip-group .chip').forEach(c => {
+    c.classList.toggle('active', parseInt(c.textContent.replace(',','')) === n);
+  });
+  calculate();
+}
+
+function switchTab(tab) {
+  state.tab = tab;
+  document.getElementById('tab-preset').classList.toggle('active', tab === 'preset');
+  document.getElementById('tab-custom').classList.toggle('active', tab === 'custom');
+  document.getElementById('preset-panel').style.display = tab === 'preset' ? '' : 'none';
+  document.getElementById('custom-panel').style.display = tab === 'custom' ? '' : 'none';
+
+  if (tab === 'preset') {
+    const active = document.querySelector('.size-item.active');
+    if (active) {
+      state.w = parseInt(active.dataset.w);
+      state.h = parseInt(active.dataset.h);
+    }
+  }
+  calculate();
+}
+
+function calculate() {
+  // sync qty
+  const qtyEl = document.getElementById('qty');
+  state.qty = Math.max(1, parseInt(qtyEl.value) || 1);
+
+  // sync custom size
+  if (state.tab === 'custom') {
+    const cw = parseFloat(document.getElementById('customW').value);
+    const ch = parseFloat(document.getElementById('customH').value);
+    if (cw > 0 && ch > 0) {
+      state.w = cw;
+      state.h = ch;
+    } else {
+      renderResult();
+      return;
+    }
+  }
+
+  renderResult();
+}
+
+function renderResult() {
+  const area = document.getElementById('resultArea');
+
+  if (!state.type || !state.gsm) {
+    area.innerHTML = `
+      <div class="empty-state">
+        <p>종이 종류와 평량을 선택하면<br>무게가 계산됩니다</p>
+      </div>`;
+    return;
+  }
+
+  const wM = state.w / 1000;
+  const hM = state.h / 1000;
+  const areaM2 = wM * hM;
+  const totalG = areaM2 * state.gsm * state.qty;
+  const totalKg = totalG / 1000;
+  const totalTon = totalKg / 1000;
+  const per100 = (areaM2 * state.gsm * 100) / 1000;
+  const per1000 = (areaM2 * state.gsm * 1000) / 1000;
+
+  const fmt = n => n >= 10000
+    ? n.toLocaleString('ko-KR', {maximumFractionDigits: 1})
+    : n.toLocaleString('ko-KR', {maximumFractionDigits: 2});
+
+  const paperName = PAPERS[state.type].name;
+  const sizeName = getSizeName();
+
+  area.innerHTML = `
+    <div class="result-card">
+      <div class="result-label">계산 결과</div>
+      <div class="result-main">
+        <div class="r-item">
+          <div class="r-val big">${fmt(totalKg)}</div>
+          <div class="r-unit">kg</div>
+          <div class="r-desc">총 무게</div>
+        </div>
+        <div class="r-item">
+          <div class="r-val">${fmt(totalKg / 1000 >= 0.1 ? totalTon : totalKg)}</div>
+          <div class="r-unit">${totalTon >= 0.1 ? 'ton' : 'kg'}</div>
+          <div class="r-desc">${totalTon >= 0.1 ? '환산 중량' : '동일'}</div>
+        </div>
+        <div class="r-item">
+          <div class="r-val">${fmt(areaM2 * 10000)}</div>
+          <div class="r-unit">cm²</div>
+          <div class="r-desc">1장 면적</div>
+        </div>
+      </div>
+      <div class="summary">
+        ${paperName} ${state.gsm}g/m²  ·  ${sizeName} (${state.w}×${state.h}mm)  ·  ${state.qty.toLocaleString()}장<br>
+        1장 무게: ${fmt(areaM2 * state.gsm)}g  ·  100장: ${fmt(per100)}kg  ·  1,000장: ${fmt(per1000)}kg
+      </div>
+    </div>`;
+}
+
+function getSizeName() {
+  if (state.tab === 'custom') return '직접입력';
+  const active = document.querySelector('.size-item.active');
+  return active ? active.querySelector('.size-name').textContent : '';
+}
+
+// init
+document.getElementById('qty').addEventListener('input', calculate);
+</script>
+</body>
+</html>
